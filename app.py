@@ -12,9 +12,6 @@ UPLOAD_FOLDER = "static/uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 DATABASE = "event.db"
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
 SENDER_EMAIL = "atharvajamsandekar067@gmail.com"
 SENDER_PASSWORD = "iaox oawe rdxx nvue"
 
@@ -505,12 +502,14 @@ def logout():
     return redirect("/")
 
 
+# -----------------------------
+# Render / Production Setup
+# -----------------------------
+if not os.path.exists("static/uploads"):
+    os.makedirs("static/uploads")
+
+init_db()
+
+
 if __name__ == "__main__":
-    import os
-
-    # Create upload folder if it doesn't exist
-    if not os.path.exists("static/uploads"):
-        os.makedirs("static/uploads")
-
-    # Run the Flask app
     app.run(host="0.0.0.0", port=5000, debug=True)
