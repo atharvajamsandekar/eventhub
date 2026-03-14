@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-5">
+
+<h2>Event Registrations</h2>
+
+<table class="table table-bordered">
+
+<thead class="table-dark">
+<tr>
+<th>Name</th>
+<th>Email</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for r in registrations %}
+
+<tr>
+<td>{{ r.name }}</td>
+<td>{{ r.email }}</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+{% endblock %}

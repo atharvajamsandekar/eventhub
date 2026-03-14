@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EventHub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">EventHub</a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/">Home</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/events">Events</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/gallery">Gallery</a>
+                </li>
+
+                {% if session.get("user") %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/my_events">My Events</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/user_logout">Student Logout</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/user_login">Student Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/signup">Create Account</a>
+                    </li>
+                {% endif %}
+
+                {% if session.get("admin") %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/admin">Admin Panel</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/logout">Admin Logout</a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="/login">Admin</a>
+                    </li>
+                {% endif %}
+
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    {% block content %}{% endblock %}
+</div>
+
+<div id="chatbot-button" onclick="toggleChat()">💬</div>
+
+<div id="chatbot-box">
+    <div id="chat-header">AI Event Assistant</div>
+    <div id="chat-messages"></div>
+
+    <div class="chat-input-row">
+        <input id="userInput" type="text" placeholder="Ask about events..." onkeydown="handleEnter(event)">
+        <button onclick="sendMessage()" class="btn btn-primary btn-sm">Send</button>
+    </div>
+</div>
+
+<footer class="bg-dark text-white mt-5 p-4 text-center">
+    <div class="container">
+        <h5>EventHub - College Event Management System</h5>
+        <p>A platform where students can explore events, register online, and stay updated with college activities.</p>
+        <p class="mb-0">© 2026 EventHub | Developed by Atharva</p>
+    </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="auth-page">
+    <div class="container py-5">
+        <div class="row justify-content-center align-items-center min-vh-75">
+            <div class="col-lg-10">
+                <div class="auth-card shadow-lg border-0 overflow-hidden">
+                    <div class="row g-0">
+                        <div class="col-md-6 auth-left d-flex flex-column justify-content-center">
+                            <div class="p-5 text-white">
+                                <span class="auth-badge">Create Student Account</span>
+                                <h1 class="auth-title mt-3">Join EventHub</h1>
+                                <p class="auth-text">
+                                    Create your student account to register for events, receive confirmations, and manage your participation easily.
+                                </p>
+
+                                <div class="auth-feature-list mt-4">
+                                    <div class="auth-feature-item">
+                                        <span>🚀</span>
+                                        <p>Quick signup process</p>
+                                    </div>
+                                    <div class="auth-feature-item">
+                                        <span>📧</span>
+                                        <p>Email confirmation support</p>
+                                    </div>
+                                    <div class="auth-feature-item">
+                                        <span>🎉</span>
+                                        <p>Access all college events</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 bg-white d-flex align-items-center">
+                            <div class="p-5 w-100">
+                                <div class="text-center mb-4">
+                                    <h2 class="fw-bold mb-2">Create Account</h2>
+                                    <p class="text-muted mb-0">Register as a student to continue</p>
+                                </div>
+
+                                <form method="POST">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Full Name</label>
+                                        <div class="input-group modern-input-group">
+                                            <span class="input-group-text">👤</span>
+                                            <input type="text" name="name" class="form-control modern-input" placeholder="Enter your full name" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Email Address</label>
+                                        <div class="input-group modern-input-group">
+                                            <span class="input-group-text">📧</span>
+                                            <input type="email" name="email" class="form-control modern-input" placeholder="Enter your email" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">Password</label>
+                                        <div class="input-group modern-input-group">
+                                            <span class="input-group-text">🔒</span>
+                                            <input type="password" name="password" class="form-control modern-input" placeholder="Create a password" required>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary w-100 modern-btn">
+                                        Create Account
+                                    </button>
+                                </form>
+
+                                <div class="text-center mt-4">
+                                    <p class="mb-2 text-muted">Already have an account?</p>
+                                    <a href="/user_login" class="auth-link-btn">Student Login</a>
+                                </div>
+
+                                <div class="text-center mt-3">
+                                    <a href="/" class="back-home-link">← Back to Home</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+     </div>
+</div>
+
+{% endblock %}

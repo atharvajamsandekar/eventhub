@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="card shadow-lg border-0 p-5 text-center">
+        <h1 class="text-success mb-3">Registration Successful ✅</h1>
+        <p class="fs-5"><strong>{{ student_name }}</strong>, you have successfully registered for <strong>{{ event_name }}</strong>.</p>
+        <p class="mb-2"><strong>Event Date:</strong> {{ event_date }}</p>
+        <p class="mb-4"><strong>Registered Email:</strong> {{ email }}</p>
+
+        {% if email_sent %}
+            <div class="alert alert-success">
+                Confirmation email has been sent successfully.
+            </div>
+        {% else %}
+            <div class="alert alert-warning">
+                Registration is successful, but email could not be sent.
+            </div>
+        {% endif %}
+
+        <div class="mt-3">
+            <a href="/events" class="btn btn-primary me-2">Back to Events</a>
+            <a href="/my_events" class="btn btn-success">My Events</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

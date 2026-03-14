@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="auth-page">
+    <div class="container py-5">
+        <div class="row justify-content-center align-items-center min-vh-75">
+            <div class="col-lg-10">
+                <div class="auth-card shadow-lg border-0 overflow-hidden">
+                    <div class="row g-0">
+                        <div class="col-md-6 auth-left d-flex flex-column justify-content-center">
+                            <div class="p-5 text-white">
+                                <span class="auth-badge">Admin Control Panel</span>
+                                <h1 class="auth-title mt-3">Admin Access</h1>
+                                <p class="auth-text">
+                                    Login to manage events, monitor registrations, view analytics,
+                                    and control the EventHub platform.
+                                </p>
+
+                                <div class="auth-feature-list mt-4">
+                                    <div class="auth-feature-item">
+                                        <span>📊</span>
+                                        <p>View system analytics</p>
+                                    </div>
+                                    <div class="auth-feature-item">
+                                        <span>🛠️</span>
+                                        <p>Manage events and categories</p>
+                                    </div>
+                                    <div class="auth-feature-item">
+                                        <span>📥</span>
+                                        <p>Download registration data</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 bg-white d-flex align-items-center">
+                            <div class="p-5 w-100">
+                                <div class="text-center mb-4">
+                                    <h2 class="fw-bold mb-2">Admin Login</h2>
+                                    <p class="text-muted mb-0">Authorized access only</p>
+                                </div>
+
+                                <form method="POST">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Username</label>
+                                        <div class="input-group modern-input-group">
+                                            <span class="input-group-text">👨‍💼</span>
+                                            <input type="text" name="username" class="form-control modern-input" placeholder="Enter admin username" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">Password</label>
+                                        <div class="input-group modern-input-group">
+                                            <span class="input-group-text">🔐</span>
+                                            <input type="password" name="password" class="form-control modern-input" placeholder="Enter admin password" required>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-dark w-100 modern-btn">
+                                        Login to Dashboard
+                                    </button>
+                                </form>
+
+                                <div class="text-center mt-4">
+                                    <p class="mb-2 text-muted">Go back to public website</p>
+                                    <a href="/" class="auth-link-btn">Back to Home</a>
+                                </div>
+
+                                <div class="text-center mt-3">
+                                    <span class="text-muted small">Admin use only</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+     </div>
+</div>
+
+{% endblock %}

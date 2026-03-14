@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-5">
+    <div class="card shadow-lg border-0 p-4">
+        <h2 class="text-center mb-4">Event Registrations</h2>
+
+        {% if registrations and registrations|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registration in registrations %}
+                        <tr>
+                            <td>{{ registration.name }}</td>
+                            <td>{{ registration.email }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-warning text-center">
+                No registrations found for this event.
+            </div>
+        {% endif %}
+
+        <div class="text-center mt-3">
+            <a href="/admin" class="btn btn-primary">Back to Admin Panel</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

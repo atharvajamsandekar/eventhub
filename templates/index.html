@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="hero-section">
+    <div class="hero-overlay"></div>
+
+    <div class="container hero-content">
+        <div class="row align-items-center min-vh-75">
+            <div class="col-lg-7">
+                <span class="hero-badge">College Event Management Platform</span>
+                <h1 class="hero-title">
+                    Welcome to <span>EventHub</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Discover exciting college events, register easily, manage participation,
+                    and stay updated with everything happening on campus.
+                </p>
+
+                <div class="hero-buttons">
+                    {% if session.get("user") %}
+                        <a href="/events" class="btn btn-warning btn-lg me-3">Explore Events</a>
+                        <a href="/my_events" class="btn btn-outline-light btn-lg">My Events</a>
+                    {% else %}
+                        <a href="/user_login" class="btn btn-warning btn-lg me-3">Student Login</a>
+                        <a href="/signup" class="btn btn-outline-light btn-lg">Create Account</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-lg-5 mt-4 mt-lg-0">
+                <div class="hero-card floating-card">
+                    <h4 class="mb-3">Why EventHub?</h4>
+
+                    <div class="hero-feature">
+                        <div class="feature-icon">🎉</div>
+                        <div>
+                            <h6>Smart Event Discovery</h6>
+                            <p>Browse all upcoming events in one place.</p>
+                        </div>
+                    </div>
+
+                    <div class="hero-feature">
+                        <div class="feature-icon">📝</div>
+                        <div>
+                            <h6>Easy Registration</h6>
+                            <p>Students can register quickly with their accounts.</p>
+                        </div>
+                    </div>
+
+                    <div class="hero-feature">
+                        <div class="feature-icon">🤖</div>
+                        <div>
+                            <h6>Chatbot Support</h6>
+                            <p>Ask event-related questions instantly.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="stats-section py-5">
+    <div class="container">
+        <div class="row g-4 text-center">
+            <div class="col-md-4">
+                <div class="stat-card reveal-card">
+                    <h2>{{ total_events }}</h2>
+                    <p>Total Events</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card reveal-card">
+                    <h2>{{ total_registrations }}</h2>
+                    <p>Total Registrations</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card reveal-card">
+                    <h2>{{ total_users }}</h2>
+                    <p>Registered Students</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="features-section py-5">
+    <div class="container">
+        <div class="section-title text-center mb-5">
+            <h2>Platform Features</h2>
+            <p>Everything needed for a professional event management system</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card reveal-card">
+                    <div class="big-icon">📅</div>
+                    <h4>Manage Events</h4>
+                    <p>Create, update, and organize event information with posters and dates.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="feature-card reveal-card">
+                    <div class="big-icon">👨‍🎓</div>
+                    <h4>Student Accounts</h4>
+                    <p>Students can sign up, log in, and register for multiple events securely.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="feature-card reveal-card">
+                    <div class="big-icon">📊</div>
+                    <h4>Admin Dashboard</h4>
+                    <p>Track event data, registrations, and export participant details easily.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="section-title text-center mb-5">
+            <h2>Upcoming Events</h2>
+            <p>See what’s coming next on campus</p>
+        </div>
+
+        <div class="row">
+            {% for event in upcoming_events %}
+            <div class="col-md-4 mb-4">
+                <div class="card shadow border-0 h-100 event-card-custom">
+                    <img src="{{ url_for('static', filename='uploads/' + event.image) }}" class="card-img-top" alt="{{ event.name }}">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="fw-bold mb-0">{{ event.name }}</h5>
+                            <span class="badge rounded-pill bg-primary">{{ event.category }}</span>
+                        </div>
+                        <p class="text-muted">{{ event.description }}</p>
+                        <p><strong>Date:</strong> {{ event.date }}</p>
+                        <div class="mt-auto">
+                            <a href="/events" class="btn btn-dark w-100">View More</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if upcoming_events|length == 0 %}
+            <div class="col-12 text-center">
+                <p class="text-muted">No events available right now.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="cta-section py-5">
+    <div class="container">
+        <div class="cta-box text-center">
+            <h2>Ready to join the next big event?</h2>
+            <p>Browse the latest college events and register in just a few clicks.</p>
+            <a href="/events" class="btn btn-light btn-lg">View Events</a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
