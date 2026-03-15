@@ -1,9 +1,7 @@
 from flask import Flask, render_template, request, redirect, jsonify, session, send_file
 import os
 import sqlite3
-import pandas as pd
 import requests
-from email.message import EmailMessage
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -13,7 +11,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 DATABASE = "event.db"
 
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
-SENDER_API_KEY = os.environ.get("SENDGRID_API_KEY")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
