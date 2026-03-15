@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, jsonify, session, send_file
 import os
 import sqlite3
-import pandas as pd
 import smtplib
 from email.message import EmailMessage
 
@@ -265,27 +264,21 @@ def download_excel():
 
     conn = get_db_connection()
     rows = conn.execute("""
-        SELECT registrations.id, registrations.name, registrations.email, events.name AS event_name, events.date, events.category
+        SELECT registrations.id, registrations.name, registrations.email,
+               events.name AS event_name, events.date, events.category
         FROM registrations
         JOIN events ON registrations.event_id = events.id
         ORDER BY registrations.id DESC
     """).fetchall()
     conn.close()
 
-    data = []
-    for row in rows:
-        data.append({
-            "Registration ID": row["id"],
-            "Student Name": row["name"],
-            "Email": row["email"],
-            "Event Name": row["event_name"],
-            "Event Date": row["date"],
-            "Category": row["category"]
-        })
+    file_path = "registrations.csv"
 
-    df = pd.DataFrame(data)
-    file_path = "registrations.xlsx"
-    df.to_excel(file_path, index=False)
+    with open(file_path, "w") as f:
+        f.write("Registration ID,Student Name,Email,Event Name,Event Date,Category\n")
+
+        for row in rows:
+            f.write(f"{row['id']},{row['name']},{row['email']},{row['event_name']},{row['date']},{row['category']}\n")
 
     return send_file(file_path, as_attachment=True)
 
