@@ -63,6 +63,13 @@ def init_db():
 
 def send_confirmation_email(student_email, student_name, event_name, event_date):
     try:
+        print("DEBUG EMAIL:", SENDER_EMAIL)
+        print("DEBUG PASSWORD EXISTS:", bool(SENDER_PASSWORD))
+
+        if not SENDER_EMAIL or not SENDER_PASSWORD:
+            print("Email credentials are missing.")
+            return False
+
         msg = EmailMessage()
         msg["Subject"] = f"Registration Confirmed - {event_name}"
         msg["From"] = SENDER_EMAIL
@@ -88,9 +95,11 @@ EventHub Team
             smtp.login(SENDER_EMAIL, SENDER_PASSWORD)
             smtp.send_message(msg)
 
+        print("Email sent successfully.")
         return True
+
     except Exception as e:
-        print("Email sending failed:", e)
+        print("Email sending failed:", repr(e))
         return False
 
 
