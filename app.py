@@ -12,9 +12,8 @@ UPLOAD_FOLDER = "static/uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 DATABASE = "event.db"
 
-SENDER_EMAIL = "atharvajamsandekar067@gmail.com"
-SENDER_PASSWORD = "iaox oawe rdxx nvue"
-
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
+SENDER_PASSWORD = os.environ.get("SENDER_PASSWORD")
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
