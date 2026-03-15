@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, redirect, jsonify, session, send_file
 import os
 import sqlite3
-import smtplib
+import pandas as pd
+import requests
 from email.message import EmailMessage
 
 app = Flask(__name__)
@@ -12,7 +13,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 DATABASE = "event.db"
 
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
-SENDER_PASSWORD = os.environ.get("SENDER_PASSWORD")
+SENDER_API_KEY = os.environ.get("SENDGRID_API_KEY")
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -63,20 +64,31 @@ def init_db():
 
 def send_confirmation_email(student_email, student_name, event_name, event_date):
     try:
-        print("DEBUG EMAIL:", SENDER_EMAIL)
-        print("DEBUG PASSWORD EXISTS:", bool(SENDER_PASSWORD))
-
-        if not SENDER_EMAIL or not SENDER_PASSWORD:
-            print("Email credentials are missing.")
+        if not SENDER_EMAIL or not SENDGRID_API_KEY:
+            print("SendGrid credentials are missing.")
             return False
 
-        msg = EmailMessage()
-        msg["Subject"] = f"Registration Confirmed - {event_name}"
-        msg["From"] = SENDER_EMAIL
-        msg["To"] = student_email
+        url = "https://api.sendgrid.com/v3/mail/send"
 
-        msg.set_content(f"""
-Hello {student_name},
+        headers = {
+            "Authorization": f"Bearer {SENDGRID_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "personalizations": [
+                {
+                    "to": [{"email": student_email}],
+                    "subject": f"Registration Confirmed - {event_name}"
+                }
+            ],
+            "from": {
+                "email": SENDER_EMAIL
+            },
+            "content": [
+                {
+                    "type": "text/plain",
+                    "value": f"""Hello {student_name},
 
 Your registration for the event "{event_name}" has been confirmed.
 
@@ -89,17 +101,20 @@ See you at the event!
 
 Regards,
 EventHub Team
-""")
+"""
+                }
+            ]
+        }
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(SENDER_EMAIL, SENDER_PASSWORD)
-            smtp.send_message(msg)
+        response = requests.post(url, headers=headers, json=data)
 
-        print("Email sent successfully.")
-        return True
+        print("SendGrid status:", response.status_code)
+        print("SendGrid response:", response.text)
+
+        return response.status_code == 202
 
     except Exception as e:
-        print("Email sending failed:", repr(e))
+        print("SendGrid email error:", repr(e))
         return False
 
 
