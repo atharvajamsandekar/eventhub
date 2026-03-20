@@ -300,32 +300,37 @@ def admin():
     cursor.execute("SELECT * FROM events ORDER BY id DESC")
     events = cursor.fetchall()
 
-    cursor.execute("SELECT * FROM registrations ORDER BY id DESC")
-    registrations = cursor.fetchall()
+    cursor.execute("SELECT * FROM users ORDER BY id DESC")
+    users = cursor.fetchall()
 
     cursor.execute("""
-        SELECT category, COUNT(*) AS total
-        FROM events
-        GROUP BY category
-        ORDER BY total DESC
+        SELECT registrations.id,
+               registrations.name,
+               registrations.email,
+               registrations.event_id,
+               events.name AS event_name,
+               events.date AS event_date,
+               events.category AS event_category
+        FROM registrations
+        JOIN events ON registrations.event_id = events.id
+        ORDER BY registrations.id DESC
     """)
-    category_rows = cursor.fetchall()
+    registrations = cursor.fetchall()
 
-    cursor.execute("SELECT COUNT(*) AS count FROM users")
-    total_users = cursor.fetchone()["count"]
+    total_events = len(events)
+    total_users = len(users)
+    total_registrations = len(registrations)
 
     conn.close()
-
-    category_labels = [row["category"] for row in category_rows]
-    category_totals = [row["total"] for row in category_rows]
 
     return render_template(
         "admin.html",
         events=events,
+        users=users,
         registrations=registrations,
+        total_events=total_events,
         total_users=total_users,
-        category_labels=category_labels,
-        category_totals=category_totals
+        total_registrations=total_registrations
     )
 
 
@@ -470,13 +475,15 @@ def view_registrations(event_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT * FROM registrations WHERE event_id = %s ORDER BY id DESC",
-        (event_id,)
-    )
+    cursor.execute("""
+        SELECT id, name, email
+        FROM registrations
+        WHERE event_id = %s
+        ORDER BY id DESC
+    """, (event_id,))
     registrations = cursor.fetchall()
-    conn.close()
 
+    conn.close()
     return render_template("registrations.html", registrations=registrations)
 
 
