@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, jsonify, session, s
 import os
 import sqlite3
 import requests
+import google.generativeai as genai
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -12,6 +13,8 @@ DATABASE = "event.db"
 
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-pro")
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -456,56 +459,14 @@ def my_events():
 
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
-    message = request.json["message"].lower().strip()
+    user_message = request.json["message"]
 
-    conn = get_db_connection()
-    events = conn.execute("SELECT * FROM events ORDER BY date ASC").fetchall()
-    conn.close()
-
-    if "hello" in message or "hi" in message or "hey" in message:
-        reply = "Hello! I am your Event Assistant. Ask me about events, dates, categories, or registration."
-
-    elif "register" in message and "how" in message:
-        reply = "To register, first login as a student, open the Events page, choose an event, and click Register Now."
-
-    elif "category" in message or "categories" in message:
-        categories = sorted(list(set([event["category"] for event in events if event["category"]])))
-        if categories:
-            reply = "Available categories are: " + ", ".join(categories)
-        else:
-            reply = "No event categories are available right now."
-
-    elif "sports" in message or "tech" in message or "cultural" in message or "general" in message:
-        matched = []
-        for event in events:
-            if event["category"] and event["category"].lower() in message:
-                matched.append(event["name"])
-        if matched:
-            reply = "Events in this category: " + ", ".join(matched)
-        else:
-            reply = "I could not find events in that category right now."
-
-    elif "event" in message or "events" in message:
-        if len(events) == 0:
-            reply = "No events are available right now."
-        else:
-            names = [event["name"] for event in events]
-            reply = "Available events: " + ", ".join(names)
-
-    else:
-        event_found = None
-        for event in events:
-            if event["name"].lower() in message:
-                event_found = event
-                break
-
-        if event_found:
-            reply = (
-                f"{event_found['name']} is a {event_found['category']} event scheduled on "
-                f"{event_found['date']}. Description: {event_found['description']}"
-            )
-        else:
-            reply = "I can help with event names, dates, categories, and how to register."
+    try:
+        response = model.generate_content(user_message)
+        reply = response.text
+    except Exception as e:
+        print("Gemini error:", e)
+        reply = "AI not working right now."
 
     return jsonify({"reply": reply})
 
