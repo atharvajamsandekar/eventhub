@@ -19,7 +19,7 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
 # -----------------------------
-# GEMINI AI (FIXED VERSION)
+# GEMINI AI
 # -----------------------------
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
@@ -102,7 +102,7 @@ def send_confirmation_email(student_email, student_name, event_name, event_date)
         return False
 
 # -----------------------------
-# ROUTES
+# HOME
 # -----------------------------
 @app.route("/")
 def home():
@@ -130,6 +130,9 @@ def home():
         upcoming_events=upcoming_events
     )
 
+# -----------------------------
+# EVENTS
+# -----------------------------
 @app.route("/events")
 def events_page():
     conn = get_db_connection()
@@ -141,22 +144,154 @@ def events_page():
     conn.close()
     return render_template("events.html", events=events)
 
-@app.route("/signup", methods=["POST"])
+# -----------------------------
+# GALLERY
+# -----------------------------
+@app.route("/gallery")
+def gallery():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM events ORDER BY id DESC")
+    events = cursor.fetchall()
+
+    conn.close()
+    return render_template("gallery.html", events=events)
+
+# -----------------------------
+# SIGNUP
+# -----------------------------
+@app.route("/signup", methods=["GET", "POST"])
 def signup():
-    name = request.form["name"]
-    email = request.form["email"]
-    password = request.form["password"]
+    if request.method == "POST":
+        name = request.form["name"]
+        email = request.form["email"]
+        password = request.form["password"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
+            (name, email, password)
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect("/user_login")
+
+    return render_template("signup.html")
+
+# -----------------------------
+# USER LOGIN
+# -----------------------------
+@app.route("/user_login", methods=["GET", "POST"])
+def user_login():
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT * FROM users WHERE email=%s AND password=%s",
+            (email, password)
+        )
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            session["user"] = email
+            return redirect("/events")
+
+        return "Invalid Login"
+
+    return render_template("user_login.html")
+
+# -----------------------------
+# ADMIN LOGIN
+# -----------------------------
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        if request.form["username"] == "admin" and request.form["password"] == "admin123":
+            session["admin"] = True
+            return redirect("/admin")
+
+    return render_template("login.html")
+
+# -----------------------------
+# ADMIN PANEL
+# -----------------------------
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    if "admin" not in session:
+        return redirect("/login")
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
-                   (name, email, password))
+    if request.method == "POST":
+        name = request.form["name"]
+        description = request.form["description"]
+        date = request.form["date"]
+        category = request.form["category"]
+
+        image = request.files["image"]
+        image_name = image.filename
+        image.save(os.path.join(app.config["UPLOAD_FOLDER"], image_name))
+
+        cursor.execute("""
+            INSERT INTO events (name, description, date, image, category)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (name, description, date, image_name, category))
+        conn.commit()
+
+    cursor.execute("SELECT * FROM events ORDER BY id DESC")
+    events = cursor.fetchall()
+
+    conn.close()
+
+    return render_template("admin.html", events=events)
+
+# -----------------------------
+# DELETE EVENT
+# -----------------------------
+@app.route("/delete_event/<int:event_id>")
+def delete_event(event_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM events WHERE id=%s", (event_id,))
     conn.commit()
     conn.close()
 
-    return redirect("/user_login")
+    return redirect("/admin")
 
+# -----------------------------
+# REGISTER EVENT
+# -----------------------------
+@app.route("/register/<int:event_id>", methods=["POST"])
+def register(event_id):
+    name = request.form["name"]
+    email = request.form["email"]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO registrations (event_id, name, email) VALUES (%s, %s, %s)",
+        (event_id, name, email)
+    )
+    conn.commit()
+    conn.close()
+
+    return "Registered Successfully"
+
+# -----------------------------
+# CHATBOT
+# -----------------------------
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
     user_message = request.json["message"]
