@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, jsonify, session, s
 import os
 import sqlite3
 import requests
-import google.generativeai as genai
+from google import genai
 
 app = Flask(__name__)
 app.secret_key = "secret123"
