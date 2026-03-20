@@ -1,6 +1,5 @@
 Flask
-pandas
-openpyxl
-gunicorn
+psycopg2-binary
 requests
 google-genai
+gunicorn
