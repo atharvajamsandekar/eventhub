@@ -13,9 +13,12 @@ DATABASE = "event.db"
 
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
 
+# ✅ Gemini Client (NEW WAY)
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+
+# ---------------- DB ----------------
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
@@ -29,44 +32,40 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
+            name TEXT,
+            email TEXT UNIQUE,
+            password TEXT
         )
     """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT NOT NULL,
-            date TEXT NOT NULL,
-            image TEXT NOT NULL
+            name TEXT,
+            description TEXT,
+            date TEXT,
+            image TEXT,
+            category TEXT DEFAULT 'General'
         )
     """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS registrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            FOREIGN KEY (event_id) REFERENCES events (id)
+            event_id INTEGER,
+            name TEXT,
+            email TEXT
         )
     """)
-
-    columns = [row["name"] for row in cursor.execute("PRAGMA table_info(events)").fetchall()]
-    if "category" not in columns:
-        cursor.execute("ALTER TABLE events ADD COLUMN category TEXT DEFAULT 'General'")
 
     conn.commit()
     conn.close()
 
 
+# ---------------- EMAIL ----------------
 def send_confirmation_email(student_email, student_name, event_name, event_date):
     try:
         if not SENDER_EMAIL or not SENDGRID_API_KEY:
-            print("SendGrid credentials are missing.")
             return False
 
         url = "https://api.sendgrid.com/v3/mail/send"
@@ -83,22 +82,14 @@ def send_confirmation_email(student_email, student_name, event_name, event_date)
                     "subject": f"Registration Confirmed - {event_name}"
                 }
             ],
-            "from": {
-                "email": SENDER_EMAIL
-            },
+            "from": {"email": SENDER_EMAIL},
             "content": [
                 {
                     "type": "text/plain",
                     "value": f"""Hello {student_name},
 
-Your registration for the event "{event_name}" has been confirmed.
-
-Event Details:
-Event Name: {event_name}
-Event Date: {event_date}
-
-Thank you for registering.
-See you at the event!
+You have successfully registered for {event_name}.
+Date: {event_date}
 
 Regards,
 EventHub Team
@@ -108,16 +99,13 @@ EventHub Team
         }
 
         response = requests.post(url, headers=headers, json=data)
-
-        print("SendGrid status:", response.status_code)
-        print("SendGrid response:", response.text)
-
         return response.status_code == 202
 
-    except Exception as e:
-        print("SendGrid email error:", repr(e))
+    except:
         return False
 
+
+# ---------------- ROUTES ----------------
 
 @app.route("/")
 def home():
@@ -127,107 +115,22 @@ def home():
     total_registrations = conn.execute("SELECT COUNT(*) FROM registrations").fetchone()[0]
     total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
 
-    upcoming_events = conn.execute(
-        "SELECT * FROM events ORDER BY date ASC, id DESC LIMIT 3"
-    ).fetchall()
-
+    events = conn.execute("SELECT * FROM events ORDER BY date ASC LIMIT 3").fetchall()
     conn.close()
 
-    return render_template(
-        "index.html",
-        total_events=total_events,
-        total_registrations=total_registrations,
-        total_users=total_users,
-        upcoming_events=upcoming_events
-    )
+    return render_template("index.html",
+                           total_events=total_events,
+                           total_registrations=total_registrations,
+                           total_users=total_users,
+                           upcoming_events=events)
 
 
 @app.route("/events")
 def events_page():
     conn = get_db_connection()
-    events = conn.execute("SELECT * FROM events ORDER BY date ASC, id DESC").fetchall()
+    events = conn.execute("SELECT * FROM events").fetchall()
     conn.close()
     return render_template("events.html", events=events)
-
-
-@app.route("/gallery")
-def gallery():
-    conn = get_db_connection()
-    events = conn.execute("SELECT * FROM events ORDER BY id DESC").fetchall()
-    conn.close()
-    return render_template("gallery.html", events=events)
-
-
-@app.route("/signup", methods=["GET", "POST"])
-def signup():
-    if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        password = request.form["password"]
-
-        conn = get_db_connection()
-        existing_user = conn.execute(
-            "SELECT * FROM users WHERE email = ?",
-            (email,)
-        ).fetchone()
-
-        if existing_user:
-            conn.close()
-            return "Email already registered. Please login."
-
-        conn.execute(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-            (name, email, password)
-        )
-        conn.commit()
-        conn.close()
-
-        return redirect("/user_login")
-
-    return render_template("signup.html")
-
-
-@app.route("/user_login", methods=["GET", "POST"])
-def user_login():
-    if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
-
-        conn = get_db_connection()
-        user = conn.execute(
-            "SELECT * FROM users WHERE email = ? AND password = ?",
-            (email, password)
-        ).fetchone()
-        conn.close()
-
-        if user:
-            session["user"] = email
-            return redirect("/events")
-
-        return "Invalid Login"
-
-    return render_template("user_login.html")
-
-
-@app.route("/user_logout")
-def user_logout():
-    session.pop("user", None)
-    return redirect("/")
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        if username == "admin" and password == "admin123":
-            session["admin"] = True
-            return redirect("/admin")
-        else:
-            return "Invalid Login"
-
-    return render_template("login.html")
 
 
 @app.route("/admin", methods=["GET", "POST"])
@@ -246,8 +149,7 @@ def admin():
         image = request.files["image"]
         image_name = image.filename
 
-        image_path = os.path.join(app.config["UPLOAD_FOLDER"], image_name)
-        image.save(image_path)
+        image.save(os.path.join(app.config["UPLOAD_FOLDER"], image_name))
 
         conn.execute(
             "INSERT INTO events (name, description, date, image, category) VALUES (?, ?, ?, ?, ?)",
@@ -255,242 +157,73 @@ def admin():
         )
         conn.commit()
 
-    events = conn.execute("SELECT * FROM events ORDER BY id DESC").fetchall()
-    registrations = conn.execute("SELECT * FROM registrations ORDER BY id DESC").fetchall()
-
-    category_rows = conn.execute("""
-        SELECT category, COUNT(*) AS total
-        FROM events
-        GROUP BY category
-        ORDER BY total DESC
-    """).fetchall()
-
-    total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-
+    events = conn.execute("SELECT * FROM events").fetchall()
+    registrations = conn.execute("SELECT * FROM registrations").fetchall()
     conn.close()
 
-    category_labels = [row["category"] for row in category_rows]
-    category_totals = [row["total"] for row in category_rows]
+    return render_template("admin.html", events=events, registrations=registrations)
 
-    return render_template(
-        "admin.html",
-        events=events,
-        registrations=registrations,
-        total_users=total_users,
-        category_labels=category_labels,
-        category_totals=category_totals
+
+@app.route("/register/<int:event_id>", methods=["POST"])
+def register(event_id):
+    conn = get_db_connection()
+
+    name = request.form["name"]
+    email = request.form["email"]
+
+    event = conn.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+
+    conn.execute(
+        "INSERT INTO registrations (event_id, name, email) VALUES (?, ?, ?)",
+        (event_id, name, email)
     )
-
-
-@app.route("/download_excel")
-def download_excel():
-    if "admin" not in session:
-        return redirect("/login")
-
-    conn = get_db_connection()
-    rows = conn.execute("""
-        SELECT registrations.id, registrations.name, registrations.email,
-               events.name AS event_name, events.date, events.category
-        FROM registrations
-        JOIN events ON registrations.event_id = events.id
-        ORDER BY registrations.id DESC
-    """).fetchall()
-    conn.close()
-
-    file_path = "registrations.csv"
-
-    with open(file_path, "w") as f:
-        f.write("Registration ID,Student Name,Email,Event Name,Event Date,Category\n")
-
-        for row in rows:
-            f.write(f"{row['id']},{row['name']},{row['email']},{row['event_name']},{row['date']},{row['category']}\n")
-
-    return send_file(file_path, as_attachment=True)
-
-
-@app.route("/edit_event/<int:event_id>", methods=["GET", "POST"])
-def edit_event(event_id):
-    if "admin" not in session:
-        return redirect("/login")
-
-    conn = get_db_connection()
-    event = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
-
-    if not event:
-        conn.close()
-        return "Event not found"
-
-    if request.method == "POST":
-        name = request.form["name"]
-        description = request.form["description"]
-        date = request.form["date"]
-        category = request.form["category"]
-
-        image = request.files["image"]
-
-        if image and image.filename != "":
-            image_name = image.filename
-            image_path = os.path.join(app.config["UPLOAD_FOLDER"], image_name)
-            image.save(image_path)
-
-            conn.execute("""
-                UPDATE events
-                SET name = ?, description = ?, date = ?, image = ?, category = ?
-                WHERE id = ?
-            """, (name, description, date, image_name, category, event_id))
-        else:
-            conn.execute("""
-                UPDATE events
-                SET name = ?, description = ?, date = ?, category = ?
-                WHERE id = ?
-            """, (name, description, date, category, event_id))
-
-        conn.commit()
-        conn.close()
-        return redirect("/admin")
-
-    conn.close()
-    return render_template("edit_event.html", event=event)
-
-
-@app.route("/delete_event/<int:event_id>")
-def delete_event(event_id):
-    if "admin" not in session:
-        return redirect("/login")
-
-    conn = get_db_connection()
-    conn.execute("DELETE FROM registrations WHERE event_id = ?", (event_id,))
-    conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
     conn.commit()
     conn.close()
 
-    return redirect("/admin")
+    send_confirmation_email(email, name, event["name"], event["date"])
+
+    return redirect("/events")
 
 
-@app.route("/register/<int:event_id>", methods=["GET", "POST"])
-def register(event_id):
-    if "user" not in session:
-        return redirect("/user_login")
-
-    conn = get_db_connection()
-    selected_event = conn.execute(
-        "SELECT * FROM events WHERE id = ?",
-        (event_id,)
-    ).fetchone()
-
-    if not selected_event:
-        conn.close()
-        return "Event not found"
-
-    if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-
-        already_registered = conn.execute(
-            "SELECT * FROM registrations WHERE event_id = ? AND email = ?",
-            (event_id, email)
-        ).fetchone()
-
-        if already_registered:
-            conn.close()
-            return "You have already registered for this event."
-
-        conn.execute(
-            "INSERT INTO registrations (event_id, name, email) VALUES (?, ?, ?)",
-            (event_id, name, email)
-        )
-        conn.commit()
-        conn.close()
-
-        email_sent = send_confirmation_email(
-            student_email=email,
-            student_name=name,
-            event_name=selected_event["name"],
-            event_date=selected_event["date"]
-        )
-
-        return render_template(
-            "registration_success.html",
-            student_name=name,
-            event_name=selected_event["name"],
-            event_date=selected_event["date"],
-            email=email,
-            email_sent=email_sent
-        )
-
-    conn.close()
-    return render_template("register.html", event_id=event_id)
-
-
-@app.route("/view_registrations/<int:event_id>")
-def view_registrations(event_id):
-    if "admin" not in session:
-        return redirect("/login")
-
-    conn = get_db_connection()
-    registrations = conn.execute(
-        "SELECT * FROM registrations WHERE event_id = ? ORDER BY id DESC",
-        (event_id,)
-    ).fetchall()
-    conn.close()
-
-    return render_template("registrations.html", registrations=registrations)
-
-
-@app.route("/my_events")
-def my_events():
-    if "user" not in session:
-        return redirect("/user_login")
-
-    user_email = session["user"]
-
-    conn = get_db_connection()
-    events = conn.execute("""
-        SELECT DISTINCT events.*
-        FROM events
-        JOIN registrations ON events.id = registrations.event_id
-        WHERE registrations.email = ?
-        ORDER BY events.date ASC, events.id DESC
-    """, (user_email,)).fetchall()
-    conn.close()
-
-    return render_template("my_events.html", events=events)
-
-
+# ---------------- CHATBOT (AI) ----------------
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
     user_message = request.json["message"]
 
     try:
-        response = model.generate_content(user_message)
-        
-        # SAFETY CHECK
-        if response and hasattr(response, "text"):
-            reply = response.text
-        else:
-            reply = "No response from AI."
-
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=user_message
+        )
+        reply = response.text
     except Exception as e:
-        print("Gemini ERROR:", e)
+        print("AI ERROR:", e)
         reply = "AI temporarily unavailable."
 
     return jsonify({"reply": reply})
 
 
+# ---------------- LOGIN ----------------
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        if request.form["username"] == "admin" and request.form["password"] == "admin123":
+            session["admin"] = True
+            return redirect("/admin")
+    return render_template("login.html")
+
+
 @app.route("/logout")
 def logout():
-    session.pop("admin", None)
+    session.clear()
     return redirect("/")
 
 
-# -----------------------------
-# Render / Production Setup
-# -----------------------------
+# ---------------- RUN ----------------
 if not os.path.exists("static/uploads"):
     os.makedirs("static/uploads")
 
 init_db()
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True)
