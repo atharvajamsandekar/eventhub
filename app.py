@@ -463,10 +463,16 @@ def chatbot():
 
     try:
         response = model.generate_content(user_message)
-        reply = response.text
+        
+        # SAFETY CHECK
+        if response and hasattr(response, "text"):
+            reply = response.text
+        else:
+            reply = "No response from AI."
+
     except Exception as e:
-        print("Gemini error:", e)
-        reply = "AI not working right now."
+        print("Gemini ERROR:", e)
+        reply = "AI temporarily unavailable."
 
     return jsonify({"reply": reply})
 
