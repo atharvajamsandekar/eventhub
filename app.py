@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, jsonify, session, send_file
 import os
-import sqlite3
+import psycopg2
 import requests
 from google import genai
 
@@ -9,60 +9,68 @@ app.secret_key = "secret123"
 
 UPLOAD_FOLDER = "static/uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-DATABASE = "event.db"
 
+# -----------------------------
+# DATABASE (PostgreSQL)
+# -----------------------------
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+# -----------------------------
+# GEMINI AI (FIXED VERSION)
+# -----------------------------
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+# -----------------------------
+# EMAIL CONFIG
+# -----------------------------
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
 
-# ✅ Gemini Client (NEW WAY)
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-
-
-# ---------------- DB ----------------
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
+# -----------------------------
+# INIT DATABASE
+# -----------------------------
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            email TEXT UNIQUE,
-            password TEXT
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
         )
     """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            description TEXT,
-            date TEXT,
-            image TEXT,
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            date TEXT NOT NULL,
+            image TEXT NOT NULL,
             category TEXT DEFAULT 'General'
         )
     """)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS registrations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_id INTEGER,
-            name TEXT,
-            email TEXT
+            id SERIAL PRIMARY KEY,
+            event_id INTEGER REFERENCES events(id),
+            name TEXT NOT NULL,
+            email TEXT NOT NULL
         )
     """)
 
     conn.commit()
     conn.close()
 
-
-# ---------------- EMAIL ----------------
+# -----------------------------
+# EMAIL FUNCTION
+# -----------------------------
 def send_confirmation_email(student_email, student_name, event_name, event_date):
     try:
         if not SENDER_EMAIL or not SENDGRID_API_KEY:
@@ -76,26 +84,15 @@ def send_confirmation_email(student_email, student_name, event_name, event_date)
         }
 
         data = {
-            "personalizations": [
-                {
-                    "to": [{"email": student_email}],
-                    "subject": f"Registration Confirmed - {event_name}"
-                }
-            ],
+            "personalizations": [{
+                "to": [{"email": student_email}],
+                "subject": f"Registration Confirmed - {event_name}"
+            }],
             "from": {"email": SENDER_EMAIL},
-            "content": [
-                {
-                    "type": "text/plain",
-                    "value": f"""Hello {student_name},
-
-You have successfully registered for {event_name}.
-Date: {event_date}
-
-Regards,
-EventHub Team
-"""
-                }
-            ]
+            "content": [{
+                "type": "text/plain",
+                "value": f"Hello {student_name}, Your registration for {event_name} is confirmed."
+            }]
         }
 
         response = requests.post(url, headers=headers, json=data)
@@ -104,88 +101,62 @@ EventHub Team
     except:
         return False
 
-
-# ---------------- ROUTES ----------------
-
+# -----------------------------
+# ROUTES
+# -----------------------------
 @app.route("/")
 def home():
     conn = get_db_connection()
+    cursor = conn.cursor()
 
-    total_events = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-    total_registrations = conn.execute("SELECT COUNT(*) FROM registrations").fetchone()[0]
-    total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM events")
+    total_events = cursor.fetchone()[0]
 
-    events = conn.execute("SELECT * FROM events ORDER BY date ASC LIMIT 3").fetchall()
+    cursor.execute("SELECT COUNT(*) FROM registrations")
+    total_registrations = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
+
+    cursor.execute("SELECT * FROM events ORDER BY date ASC LIMIT 3")
+    upcoming_events = cursor.fetchall()
+
     conn.close()
 
     return render_template("index.html",
-                           total_events=total_events,
-                           total_registrations=total_registrations,
-                           total_users=total_users,
-                           upcoming_events=events)
-
+        total_events=total_events,
+        total_registrations=total_registrations,
+        total_users=total_users,
+        upcoming_events=upcoming_events
+    )
 
 @app.route("/events")
 def events_page():
     conn = get_db_connection()
-    events = conn.execute("SELECT * FROM events").fetchall()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM events ORDER BY date ASC")
+    events = cursor.fetchall()
+
     conn.close()
     return render_template("events.html", events=events)
 
-
-@app.route("/admin", methods=["GET", "POST"])
-def admin():
-    if "admin" not in session:
-        return redirect("/login")
-
-    conn = get_db_connection()
-
-    if request.method == "POST":
-        name = request.form["name"]
-        description = request.form["description"]
-        date = request.form["date"]
-        category = request.form["category"]
-
-        image = request.files["image"]
-        image_name = image.filename
-
-        image.save(os.path.join(app.config["UPLOAD_FOLDER"], image_name))
-
-        conn.execute(
-            "INSERT INTO events (name, description, date, image, category) VALUES (?, ?, ?, ?, ?)",
-            (name, description, date, image_name, category)
-        )
-        conn.commit()
-
-    events = conn.execute("SELECT * FROM events").fetchall()
-    registrations = conn.execute("SELECT * FROM registrations").fetchall()
-    conn.close()
-
-    return render_template("admin.html", events=events, registrations=registrations)
-
-
-@app.route("/register/<int:event_id>", methods=["POST"])
-def register(event_id):
-    conn = get_db_connection()
-
+@app.route("/signup", methods=["POST"])
+def signup():
     name = request.form["name"]
     email = request.form["email"]
+    password = request.form["password"]
 
-    event = conn.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    conn.execute(
-        "INSERT INTO registrations (event_id, name, email) VALUES (?, ?, ?)",
-        (event_id, name, email)
-    )
+    cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
+                   (name, email, password))
     conn.commit()
     conn.close()
 
-    send_confirmation_email(email, name, event["name"], event["date"])
+    return redirect("/user_login")
 
-    return redirect("/events")
-
-
-# ---------------- CHATBOT (AI) ----------------
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
     user_message = request.json["message"]
@@ -195,35 +166,20 @@ def chatbot():
             model="gemini-2.0-flash",
             contents=user_message
         )
-        reply = response.text
+        reply = response.text if response else "No response"
     except Exception as e:
         print("AI ERROR:", e)
         reply = "AI temporarily unavailable."
 
     return jsonify({"reply": reply})
 
-
-# ---------------- LOGIN ----------------
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        if request.form["username"] == "admin" and request.form["password"] == "admin123":
-            session["admin"] = True
-            return redirect("/admin")
-    return render_template("login.html")
-
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
-
-
-# ---------------- RUN ----------------
+# -----------------------------
+# START
+# -----------------------------
 if not os.path.exists("static/uploads"):
     os.makedirs("static/uploads")
 
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)
